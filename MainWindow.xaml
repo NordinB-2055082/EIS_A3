@@ -1,0 +1,16 @@
+﻿<Window x:Class="KinectGame.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Calibration" Height="500" Width="800">
+    <Grid>
+        <!-- Display calibration rectangle -->
+        <Canvas Name="CalibrationCanvas" Background="LightGray" Margin="10">
+            <Rectangle Name="CalibrationRectangle" Width="400" Height="400" Stroke="Black" StrokeThickness="2" Canvas.Left="200" Canvas.Top="25" />
+            <!-- Visual indicators for calibration points -->
+            <Ellipse Name="PointIndicator" Width="20" Height="20" Fill="Red" Visibility="Hidden" />
+        </Canvas>
+
+        <!-- Instructions -->
+        <TextBlock Name="InstructionsTextBlock" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="10" />
+    </Grid>
+</Window>
