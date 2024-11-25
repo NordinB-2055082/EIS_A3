@@ -80,8 +80,6 @@ namespace KinectGame
 
         private void KinectSkeletonFrameReady(object sender, SkeletonFrameReadyEventArgs e)
         {
-            if (isCalibrationComplete) return; // Stop processing if calibration is complete
-
             using (SkeletonFrame skeletonFrame = e.OpenSkeletonFrame())
             {
                 if (skeletonFrame == null) return;
@@ -94,8 +92,32 @@ namespace KinectGame
                 if (currentTrackedSkeleton != null && !isWaiting)
                 {
                     CollectCalibrationPoint(screenPoints[currentPointIndex]);
+                    if (isCalibrationComplete)
+                    {
+
+                        System.Windows.Point projectedPoint = calibrationProcessor.kinectToProjectionPoint(currentTrackedSkeleton.Position);
+
+                        // Update the UI to reflect the user's position
+                        UpdateUser(projectedPoint);
+                    }
                 }
             }
+        }
+
+        private void UpdateUser(System.Windows.Point projectedPoint)
+        {
+            // Round the projected point coordinates to 1 decimal place
+            double roundedX = Math.Round(projectedPoint.X, 0);
+            double roundedY = Math.Round(projectedPoint.Y, 0);
+
+            // Move a visual indicator to the user's projected position
+            User_Indicator.Visibility = Visibility.Visible;
+            PointIndicator.Visibility = Visibility.Collapsed;
+            Canvas.SetLeft(User_Indicator, roundedX - User_Indicator.Width / 2);
+            Canvas.SetTop(User_Indicator, roundedY - User_Indicator.Height / 2);
+
+            // Update a text block with the user's position, rounded to 1 decimal place
+            User_PositionTextBlock.Text = $"User  Position: ({roundedX}, {roundedY})";
         }
 
         private void CollectCalibrationPoint(System.Windows.Point screenPoint)
@@ -115,10 +137,7 @@ namespace KinectGame
             {
                 calibrationProcessor.calibrate();
                 isCalibrationComplete = true; // Mark calibration as complete
-
-                // Test the calibration result
-                System.Windows.Point testProjection = calibrationProcessor.kinectToProjectionPoint(currentTrackedSkeleton.Position);
-                InstructionsTextBlock.Text = $"Calibration Complete! Test Projection: ({testProjection.X}, {testProjection.Y})";
+                InstructionsTextBlock.Text = "All calibration points have been captured.";
             }
             else
             {
