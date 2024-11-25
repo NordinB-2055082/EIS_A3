@@ -5,14 +5,15 @@
     <Grid>
         <!-- Display calibration rectangle -->
         <Canvas Name="CalibrationCanvas" Background="LightGray" Margin="10">
-            <Rectangle Name="CalibrationRectangle" Width="400" Height="400" Stroke="Black" StrokeThickness="2" Canvas.Left="200" Canvas.Top="25" />
+            <Rectangle Name="CalibrationRectangle" Width="800" Height="600" Stroke="Black" StrokeThickness="2" Canvas.Left="200" Canvas.Top="25" />
             <!-- Visual indicators for calibration points -->
             <Ellipse Name="PointIndicator" Width="20" Height="20" Fill="Red" Visibility="Hidden" />
             <Ellipse x:Name="User_Indicator" Width="20" Height="20" Fill="Red" Visibility="Collapsed"/>
             <TextBlock x:Name="User_PositionTextBlock" FontSize="14" Foreground="Black" />
         </Canvas>
 
-        <!-- Instructions -->
+
+            <!-- Instructions -->
         <TextBlock Name="InstructionsTextBlock" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="10" />
     </Grid>
 </Window>

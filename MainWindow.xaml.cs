@@ -6,13 +6,12 @@ using Emgu.CV.CvEnum;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-
 using System.Windows.Controls;
-
 using Microsoft.Kinect;
-using System.Drawing; 
+using System.Drawing;
 using KinectGame.Calibration;
 using System.Windows.Threading;
+using KinectGame.Gestures;
 
 namespace KinectGame
 {
@@ -26,6 +25,8 @@ namespace KinectGame
         private DispatcherTimer captureTimer;
         private bool isWaiting = true; // Start in "waiting" mode for the first point
         private bool isCalibrationComplete = false; // Flag to indicate calibration is complete
+        private List<Line> drawnLines = new List<Line>(); // Store drawn lines
+        private GestureDetector gestureDetector;
 
         public MainWindow()
         {
@@ -34,6 +35,11 @@ namespace KinectGame
             SetupCalibrationPoints();
             SetupTimer();
             captureTimer.Start(); // Start timer for the first delay
+
+            // Initialize the gesture detector
+            gestureDetector = new GestureDetector(drawnLines);
+            gestureDetector.OnPaintGesture += DrawAt;
+            gestureDetector.OnEraseGesture += EraseDrawing;
         }
 
         private void InitializeKinect()
@@ -57,9 +63,9 @@ namespace KinectGame
         {
             // Define the corners of the calibration rectangle on the screen
             screenPoints.Add(new System.Windows.Point(200, 25));   // Top-left
-            screenPoints.Add(new System.Windows.Point(600, 25));   // Top-right
-            screenPoints.Add(new System.Windows.Point(600, 425));  // Bottom-right
-            screenPoints.Add(new System.Windows.Point(200, 425));  // Bottom-left
+            screenPoints.Add(new System.Windows.Point(800, 25));   // Top-right
+            screenPoints.Add(new System.Windows.Point(800, 825));  // Bottom-right
+            screenPoints.Add(new System.Windows.Point(200, 825));  // Bottom-left
 
             UpdateInstructions();
             MoveIndicator(screenPoints[currentPointIndex]);
@@ -94,11 +100,11 @@ namespace KinectGame
                     CollectCalibrationPoint(screenPoints[currentPointIndex]);
                     if (isCalibrationComplete)
                     {
-
                         System.Windows.Point projectedPoint = calibrationProcessor.kinectToProjectionPoint(currentTrackedSkeleton.Position);
-
-                        // Update the UI to reflect the user's position
                         UpdateUser(projectedPoint);
+
+                        // Update the gesture detector
+                        gestureDetector.Update(currentTrackedSkeleton);
                     }
                 }
             }
@@ -164,6 +170,33 @@ namespace KinectGame
             Canvas.SetLeft(PointIndicator, target.X - PointIndicator.Width / 2);
             Canvas.SetTop(PointIndicator, target.Y - PointIndicator.Height / 2);
             PointIndicator.Visibility = Visibility.Visible;
+        }
+
+        private void DrawAt(SkeletonPoint position)
+        {
+            // Convert the skeleton position to screen coordinates
+            System.Windows.Point screenPoint = calibrationProcessor.kinectToProjectionPoint(position);
+            Line line = new Line
+            {
+                Stroke = System.Windows.Media.Brushes.Black,
+                StrokeThickness = 10,
+                X1 = Math.Round(screenPoint.X),
+                Y1 = Math.Round(screenPoint.Y),
+                X2 = Math.Round(screenPoint.X) + 2, // Draw a small line segment
+                Y2 = Math.Round(screenPoint.Y) + 2,
+            };
+            CalibrationCanvas.Children.Add(line);
+            drawnLines.Add(line);
+        }
+
+        private void EraseDrawing()
+        {
+            for (int i = 0; i < drawnLines.Count; i++)
+            {
+                CalibrationCanvas.Children.Remove(drawnLines[i]);
+            }
+            // Clear the drawn lines
+            drawnLines.Clear();
         }
 
         private void Window_Closed(object sender, EventArgs e)

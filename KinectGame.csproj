@@ -116,6 +116,7 @@
     </Compile>
     <Compile Include="Calibration\PartialCalibrationClass.cs" />
     <Compile Include="Calibration\Util.cs" />
+    <Compile Include="Gestures\GestureDetector.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
