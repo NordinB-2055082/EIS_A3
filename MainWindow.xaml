@@ -8,8 +8,10 @@
             <Rectangle Name="CalibrationRectangle" Width="800" Height="600" Stroke="Black" StrokeThickness="2" Canvas.Left="200" Canvas.Top="25" />
             <!-- Visual indicators for calibration points -->
             <Ellipse Name="PointIndicator" Width="20" Height="20" Fill="Red" Visibility="Hidden" />
-            <Ellipse x:Name="User_Indicator" Width="20" Height="20" Fill="Red" Visibility="Collapsed"/>
-            <TextBlock x:Name="User_PositionTextBlock" FontSize="14" Foreground="Black" />
+            <Ellipse x:Name="User_Indicator1" Width="30" Height="30" Fill="Black" Visibility="Collapsed"/>
+            <Ellipse x:Name="User_Indicator2" Width="30" Height="30" Fill="Red" Visibility="Collapsed"/>
+            <TextBlock x:Name="User_PositionTextBlock1" Foreground="Black" />
+            <TextBlock x:Name="User_PositionTextBlock2" Foreground="Red" Canvas.Top="15" />
         </Canvas>
 
 

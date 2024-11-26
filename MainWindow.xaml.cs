@@ -1,17 +1,13 @@
 ﻿using System.Windows;
 using System.Windows.Media;
 using System.Windows.Shapes;
-using Emgu.CV;
-using Emgu.CV.CvEnum;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Controls;
 using Microsoft.Kinect;
-using System.Drawing;
 using KinectGame.Calibration;
 using System.Windows.Threading;
-using KinectGame.Gestures;
 
 namespace KinectGame
 {
@@ -21,11 +17,13 @@ namespace KinectGame
         private PartialCalibrationClass calibrationProcessor;
         private List<System.Windows.Point> screenPoints = new List<System.Windows.Point>();
         private Skeleton currentTrackedSkeleton;
+        private Skeleton secondTrackedSkeleton; // Added for second player
         private int currentPointIndex = 0;
         private DispatcherTimer captureTimer;
         private bool isWaiting = true; // Start in "waiting" mode for the first point
         private bool isCalibrationComplete = false; // Flag to indicate calibration is complete
-        private List<Line> drawnLines = new List<Line>(); // Store drawn lines
+        private List<Line> drawnLinesPlayer1 = new List<Line>(); // Store drawn lines for player 1
+        private List<Line> drawnLinesPlayer2 = new List<Line>(); // Store drawn lines for player 2
         private GestureDetector gestureDetector;
 
         public MainWindow()
@@ -37,7 +35,7 @@ namespace KinectGame
             captureTimer.Start(); // Start timer for the first delay
 
             // Initialize the gesture detector
-            gestureDetector = new GestureDetector(drawnLines);
+            gestureDetector = new GestureDetector();
             gestureDetector.OnPaintGesture += DrawAt;
             gestureDetector.OnEraseGesture += EraseDrawing;
         }
@@ -48,7 +46,7 @@ namespace KinectGame
             if (kinectSensor == null)
             {
                 MessageBox.Show("No Kinect sensor connected.");
-                Application.Current.Shutdown();
+                System.Windows.Application.Current.Shutdown();
                 return;
             }
 
@@ -63,9 +61,9 @@ namespace KinectGame
         {
             // Define the corners of the calibration rectangle on the screen
             screenPoints.Add(new System.Windows.Point(200, 25));   // Top-left
-            screenPoints.Add(new System.Windows.Point(800, 25));   // Top-right
-            screenPoints.Add(new System.Windows.Point(800, 825));  // Bottom-right
-            screenPoints.Add(new System.Windows.Point(200, 825));  // Bottom-left
+            screenPoints.Add(new System.Windows.Point(1000, 25));   // Top-right
+            screenPoints.Add(new System.Windows.Point(1000, 625));  // Bottom-right
+            screenPoints.Add(new System.Windows.Point(200, 625));  // Bottom-left
 
             UpdateInstructions();
             MoveIndicator(screenPoints[currentPointIndex]);
@@ -94,36 +92,52 @@ namespace KinectGame
                 skeletonFrame.CopySkeletonDataTo(skeletons);
 
                 currentTrackedSkeleton = skeletons.FirstOrDefault(s => s.TrackingState == SkeletonTrackingState.Tracked);
+                secondTrackedSkeleton = skeletons.Skip(1).FirstOrDefault(s => s.TrackingState == SkeletonTrackingState.Tracked);
 
                 if (currentTrackedSkeleton != null && !isWaiting)
                 {
                     CollectCalibrationPoint(screenPoints[currentPointIndex]);
                     if (isCalibrationComplete)
                     {
-                        System.Windows.Point projectedPoint = calibrationProcessor.kinectToProjectionPoint(currentTrackedSkeleton.Position);
-                        UpdateUser(projectedPoint);
+                        System.Windows.Point projectedPoint1 = calibrationProcessor.kinectToProjectionPoint(currentTrackedSkeleton.Position);
+                        UpdateUser(projectedPoint1, 1); // Update for player 1
 
                         // Update the gesture detector
-                        gestureDetector.Update(currentTrackedSkeleton);
+                        gestureDetector.Update(currentTrackedSkeleton, secondTrackedSkeleton);
                     }
+                }
+
+                if (secondTrackedSkeleton != null && !isWaiting)
+                {
+                    System.Windows.Point projectedPoint2 = calibrationProcessor.kinectToProjectionPoint(secondTrackedSkeleton.Position);
+                    UpdateUser(projectedPoint2, 2); // Update for player 2
                 }
             }
         }
 
-        private void UpdateUser(System.Windows.Point projectedPoint)
+        private void UpdateUser(System.Windows.Point projectedPoint, int player)
         {
             // Round the projected point coordinates to 1 decimal place
             double roundedX = Math.Round(projectedPoint.X, 0);
             double roundedY = Math.Round(projectedPoint.Y, 0);
+            PointIndicator.Visibility = Visibility.Collapsed;
 
             // Move a visual indicator to the user's projected position
-            User_Indicator.Visibility = Visibility.Visible;
-            PointIndicator.Visibility = Visibility.Collapsed;
-            Canvas.SetLeft(User_Indicator, roundedX - User_Indicator.Width / 2);
-            Canvas.SetTop(User_Indicator, roundedY - User_Indicator.Height / 2);
-
-            // Update a text block with the user's position, rounded to 1 decimal place
-            User_PositionTextBlock.Text = $"User  Position: ({roundedX}, {roundedY})";
+            if (player == 1)
+            {
+                User_Indicator1.Visibility = Visibility.Visible;
+                Canvas.SetLeft(User_Indicator1, roundedX - User_Indicator1.Width / 2);
+                Canvas.SetTop(User_Indicator1, roundedY - User_Indicator1.Height / 2);
+                User_PositionTextBlock1.Text = $"Player 1 Position: ({roundedX}, {roundedY})";
+            }
+            else if (player == 2)
+            {
+                User_Indicator2.Visibility = Visibility.Visible;
+                Canvas.SetLeft(User_Indicator2, roundedX - User_Indicator2.Width / 2);
+                Canvas.SetTop(User_Indicator2, roundedY - User_Indicator2.Height / 2);
+                User_PositionTextBlock2.Text = $"Player 2 Position: ({roundedX}, {roundedY})";
+                
+            }
         }
 
         private void CollectCalibrationPoint(System.Windows.Point screenPoint)
@@ -172,31 +186,50 @@ namespace KinectGame
             PointIndicator.Visibility = Visibility.Visible;
         }
 
-        private void DrawAt(SkeletonPoint position)
+        private void DrawAt(SkeletonPoint position, System.Windows.Media.Color color)
         {
             // Convert the skeleton position to screen coordinates
             System.Windows.Point screenPoint = calibrationProcessor.kinectToProjectionPoint(position);
             Line line = new Line
             {
-                Stroke = System.Windows.Media.Brushes.Black,
-                StrokeThickness = 10,
+                Stroke = new SolidColorBrush(color), // Use the color parameter
+                StrokeThickness = 20,
                 X1 = Math.Round(screenPoint.X),
                 Y1 = Math.Round(screenPoint.Y),
-                X2 = Math.Round(screenPoint.X) + 2, // Draw a small line segment
-                Y2 = Math.Round(screenPoint.Y) + 2,
+                X2 = Math.Round(screenPoint.X) + 1, // Draw a small line segment
+                Y2 = Math.Round(screenPoint.Y) + 1,
             };
             CalibrationCanvas.Children.Add(line);
-            drawnLines.Add(line);
+
+            // Store lines in the appropriate list based on the color
+            if (color == Colors.Black)
+                drawnLinesPlayer1.Add(line);
+            else if (color == Colors.Red)
+                drawnLinesPlayer2.Add(line);
         }
 
-        private void EraseDrawing()
+        private void EraseDrawing(System.Windows.Media.Color color)
         {
-            for (int i = 0; i < drawnLines.Count; i++)
+            if (color == Colors.Black)
             {
-                CalibrationCanvas.Children.Remove(drawnLines[i]);
+                // Clear lines for player 1
+                foreach (var line in drawnLinesPlayer1)
+                {
+                    CalibrationCanvas.Children.Remove(line);
+                }
+                drawnLinesPlayer1.Clear();
             }
-            // Clear the drawn lines
-            drawnLines.Clear();
+            else if (color == Colors.Red)
+            {
+                // Clear lines for player 2
+                foreach (var line in drawnLinesPlayer2)
+                {
+                    CalibrationCanvas.Children.Remove(line);
+                }
+                drawnLinesPlayer2.Clear();
+
+            }
+
         }
 
         private void Window_Closed(object sender, EventArgs e)

@@ -1,50 +1,59 @@
 ﻿using Microsoft.Kinect;
-using System;
 using System.Collections.Generic;
+using System.Windows.Media;
 using System.Windows.Shapes;
+using System;
+using Emgu.CV.XObjdetect;
 
-namespace KinectGame.Gestures
+public class GestureDetector
 {
-    public class GestureDetector
+    public event Action<SkeletonPoint, Color> OnPaintGesture; // Now includes color
+    public event Action<Color> OnEraseGesture;
+
+    private Skeleton currentTrackedSkeleton1;
+    private Skeleton currentTrackedSkeleton2;
+    private List<Line> drawnLinesPlayer1;
+    private List<Line> drawnLinesPlayer2;
+
+    public GestureDetector()
     {
-        public event Action<SkeletonPoint> OnPaintGesture;
-        public event Action OnEraseGesture;
+        drawnLinesPlayer1 = new List<Line>();
+        drawnLinesPlayer2 = new List<Line>();
+    }
 
-        private Skeleton currentTrackedSkeleton;
-        private List<Line> drawnLines;
+    public void Update(Skeleton skeleton1, Skeleton skeleton2)
+    {
+        currentTrackedSkeleton1 = skeleton1;
+        currentTrackedSkeleton2 = skeleton2;
+        DetectGestures();
+    }
 
-        public GestureDetector(List<Line> drawnLines)
+    private void DetectGestures()
+    {
+        DetectPlayerGestures(currentTrackedSkeleton1, Colors.Black, drawnLinesPlayer1);
+        DetectPlayerGestures(currentTrackedSkeleton2, Colors.Red, drawnLinesPlayer2);
+    }
+
+    private void DetectPlayerGestures(Skeleton skeleton, Color color, List<Line> drawnLines)
+    {
+        if (skeleton == null) return;
+
+        Joint handRight = skeleton.Joints[JointType.HandRight];
+        Joint handLeft = skeleton.Joints[JointType.HandLeft];
+
+        // Check if hand is palm down for painting
+        if (handRight.TrackingState == JointTrackingState.Tracked &&
+            handRight.Position.Y < skeleton.Position.Y &&
+            handRight.Position.Z < skeleton.Position.Z)
         {
-            this.drawnLines = drawnLines;
+            OnPaintGesture?.Invoke(handRight.Position, color);
         }
 
-        public void Update(Skeleton skeleton)
+        // Check for erase gesture: if the left hand is raised above the head
+        if (handLeft.TrackingState == JointTrackingState.Tracked &&
+            handLeft.Position.Y > skeleton.Position.Y + 0.5)
         {
-            currentTrackedSkeleton = skeleton;
-            DetectGestures();
-        }
-
-        private void DetectGestures()
-        {
-            if (currentTrackedSkeleton == null) return;
-
-            Joint handRight = currentTrackedSkeleton.Joints[JointType.HandRight];
-            Joint handLeft = currentTrackedSkeleton.Joints[JointType.HandLeft];
-
-            // Check if hand is palm down for painting
-            if (handRight.TrackingState == JointTrackingState.Tracked &&
-                handRight.Position.Y < currentTrackedSkeleton.Position.Y &&
-                handRight.Position.Z < currentTrackedSkeleton.Position.Z)
-            {
-                OnPaintGesture?.Invoke(handRight.Position);
-            }
-
-            // Check for erase gesture: if the left hand is raised above the head
-            if (handLeft.TrackingState == JointTrackingState.Tracked &&
-                handLeft.Position.Y > currentTrackedSkeleton.Position.Y + 0.5)
-            {
-                OnEraseGesture?.Invoke();
-            }
+            OnEraseGesture?.Invoke(color);
         }
     }
 }
